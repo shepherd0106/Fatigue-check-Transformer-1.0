@@ -40,6 +40,16 @@ def parser():
     smoke.add_argument("--output", required=True)
     overfit = sub.add_parser("overfit-synthetic", help="CPU two-window memorization diagnostic")
     overfit.add_argument("--max-steps", type=int, default=200)
+    visual=sub.add_parser("visualize",help="Generate completely offline HTML from text results only")
+    visual.add_argument("--results",required=True)
+    visual.add_argument("--output",required=True)
+    visual.add_argument("--models",nargs="+",choices=["M2","M1","F1","F0","E1","F2","M3"],help="Optional HTML model subset; full metrics retain all windows in each included model")
+    demo=sub.add_parser("visualize-demo",help="Generate simulated result tables and offline HTML; no signals/torch")
+    demo.add_argument("--output",required=True)
+    demo.add_argument("--windows-per-run",type=int,default=16)
+    export=sub.add_parser("tensorboard-export",help="Convert existing epoch JSONL logs to optional TensorBoard events")
+    export.add_argument("--results",required=True)
+    export.add_argument("--output")
     train = sub.add_parser("train", help="Explicit nested CV with a new-fit budget")
     train.add_argument("--manifest", required=True)
     train.add_argument("--data-root")
@@ -57,6 +67,7 @@ def parser():
     train.add_argument("--max-epochs", type=int, help="Interface-only explicit debug budget override")
     train.add_argument("--updates-per-epoch", type=int, help="Interface-only explicit debug budget override")
     train.add_argument("--batch-size", type=int, help="Interface-only explicit debug budget override")
+    train.add_argument("--tensorboard",action="store_true",help="Optional non-scientific live epoch logging; requires monitoring extra")
     return p
 
 
@@ -77,7 +88,16 @@ def main(argv=None):
             write_json(args.output, result)
         print(json.dumps({k:v for k,v in result.items() if k != "tasks"}, indent=2))
         return 0
-    if args.command == "synthetic":
+    if args.command == "visualize":
+        from .visualization import render
+        result=render(args.results,args.output,args.models)
+    elif args.command == "visualize-demo":
+        from .visualization_demo import generate_demo
+        result=generate_demo(args.output,args.windows_per_run)
+    elif args.command == "tensorboard-export":
+        from .monitoring import export_logs
+        result=export_logs(args.results,args.output)
+    elif args.command == "synthetic":
         # 按需导入模块，使只看帮助/计划时不用导入 PyTorch。
         from .synthetic import generate
         result = dict(manifest=str(generate(args.output, args.windows_per_subject)), kind="synthetic")
@@ -128,11 +148,15 @@ def main(argv=None):
                     p.error("Budget overrides are interface-only; revise the formal protocol explicitly")
                 cfg["training"][field] = override
         validate_config(cfg)
+        from .monitoring import check_logging
+        logging_options=dict(tensorboard=args.tensorboard)
+        check_logging(logging_options)
         from .data import WindowDataset
         from .experiment import nested
         data = WindowDataset(args.manifest, args.data_root)
         result = nested(cfg, data, args.output, list(cfg["variants"]) if args.full_protocol else args.models,
-                        args.outer, args.max_new_fits, args.device, args.mode, args.acceptance)
+                        args.outer, args.max_new_fits, args.device, args.mode, args.acceptance,
+                        logging_options=logging_options)
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
     return 0
 

@@ -113,6 +113,12 @@ def paired_bootstrap(left, right, replicates=10000, seed=20261011):
         sets = [{k[2] for k in a if k[:2] == (s, subject)} for s in seeds]
         if any(v != sets[0] for v in sets):
             raise ValueError("Window set changes across reporting seeds")
+        for source in sets[0]:
+            reference=a[(seeds[0],subject,source)]
+            for reporting_seed in seeds[1:]:
+                candidate=a[(reporting_seed,subject,source)]
+                if any(reference.get(field)!=candidate.get(field) for field in metadata):
+                    raise ValueError("Window truth/fold/provenance changes across reporting seeds")
     per_seed = {}
     # 先计算每个 seed、每个被试的得分差，再对同一人的各 seed 差值取平均。
     for s in seeds:

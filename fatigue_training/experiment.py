@@ -16,10 +16,12 @@ class FitBudgetReached(Exception):
     pass
 
 
-def nested(cfg, dataset, output, models, outers, max_new_fits, device="cpu", mode="interface", receipt=None):
+def nested(cfg, dataset, output, models, outers, max_new_fits, device="cpu", mode="interface", receipt=None, logging_options=None):
     # models/ outers 指定本次实验范围；max_new_fits 只限制新增训练数量，
     # 已完成且核对通过的 fit 复用时不消耗这个预算。
     # interface 用于接口调试；formal 使用原预算和已验收的真实数据。
+    from .monitoring import check_logging
+    check_logging(logging_options)
     validate_config(cfg)
     dataset.check_cohort(cfg)
     if max_new_fits < 1:
@@ -59,7 +61,8 @@ def nested(cfg, dataset, output, models, outers, max_new_fits, device="cpu", mod
         if new_fits >= max_new_fits:
             raise FitBudgetReached()
         new_fits += 1
-        return fit(cfg, task, dataset, dest, device, mode, acceptance, output/"normalization_cache", binding), dest
+        return fit(cfg, task, dataset, dest, device, mode, acceptance, output/"normalization_cache", binding,
+                   logging_options=logging_options), dest
     try:
         for model in models:
             all_oof[model] = []

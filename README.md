@@ -11,6 +11,43 @@
 5. `training.py`、`experiment.py`：早停、重训、完整嵌套调度、证据保存和已完成 fit 复用。
 6. `metrics.py`、`tests/test_core.py`：单类指标、逐被试预测、配对 bootstrap、原窗口奇偶诊断和实质性回归检查。
 
+## 直观看训练结果
+
+可视化分为两部分：TensorBoard 在训练过程中查看曲线；离线 HTML 在训练后查看预测和模型比较。两者都不改变模型、训练预算或选模规则。所有命令从包含 `pyproject.toml` 的项目根目录运行。
+
+先看模拟演示，无需 PyTorch 或 TensorBoard：
+
+```bash
+python -m fatigue_training visualize-demo --output examples/visualization_demo
+```
+
+双击生成的 `examples/visualization_demo/report.html`。这是明确标记的模拟成绩，不是模型训练结果；目录需尚不存在或为空。报告可切换模型、seed、外层折、被试和 run，查看损失/内层验证曲线、混淆矩阵、ROC/PR、每人得分、三个 seed 的模型比较、已有配对 bootstrap 区间，以及逐窗口标签/预测/疲劳概率和错例。图表可下载为 SVG，也可打印为 PDF。HTML 内嵌数据和脚本，无需联网。
+
+真实训练产生结果目录后，生成自己的报告：
+
+```bash
+python -m fatigue_training visualize --results runs/experiment01 --output runs/experiment01/report.html
+```
+
+可加 `--models M2 M1` 限定显示模型。报告只读日志和预测 CSV，不加载权重或信号数组；中途停止也能生成报告，但会标记当前完成范围。内层验证成绩与外层留出成绩分开显示。逐窗口视图按原窗口索引绘图，缺失窗口断开，不跨 run 连线；概率是类别 1 的输出，暂不解释为经过校准的实际疲劳风险。
+
+在选定的训练服务器环境中安装可选组件，并在原 `train` 命令末尾加 `--tensorboard`：
+
+```bash
+python -m pip install ".[monitoring]"
+tensorboard --logdir runs/experiment01 --host 127.0.0.1 --port 6006
+```
+
+打开训练所在机器的 `http://127.0.0.1:6006`。远程服务器可用 SSH 转发：`ssh -L 6006:127.0.0.1:6006 用户名@服务器地址`，然后在本机浏览器打开该地址。TensorBoard 记录训练损失、内层验证主指标、学习率、耗时和可用的 GPU 峰值内存；外层 refit 不记录逐轮测试成绩。每个 fit/重试使用独立日志目录。
+
+已有 `epochs.jsonl` 日志也能补导出：
+
+```bash
+python -m fatigue_training tensorboard-export --results runs/experiment01
+```
+
+默认导出到结果目录的 `tensorboard_export`，查看时使用 `tensorboard --logdir runs/experiment01/tensorboard_export --host 127.0.0.1 --port 6006`。可用 `--output` 指定其他导出目录。不开启 TensorBoard 时不要求该依赖；安装包会保留 HTML 模板。当前本机验证没有 PyTorch/TensorBoard，实际事件文件和训练联动仍需在服务器环境验证。
+
 ## 服务器环境与入口
 
 Python ≥3.10，NumPy ≥1.26，PyTorch ≥2.6、<3。`requirements.txt` 是兼容范围，服务器上按 CPU/CUDA 驱动选 PyTorch 构建，验证后保存精确版本。网页参考版本不是本机已安装版本。训练代码记录 Python、NumPy、torch、CUDA、cuDNN、设备、配置和源代码哈希。

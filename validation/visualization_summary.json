@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-12",
+  "tests": {
+    "total": 41,
+    "passed": 39,
+    "skipped": 2,
+    "failed": 0
+  },
+  "skipped_reason": "PyTorch unavailable; actual model and training smoke checks pending on server",
+  "python_syntax_files": 17,
+  "javascript_syntax": "passed node --check",
+  "demo": {
+    "simulated_only": true,
+    "fits": 106,
+    "prediction_runs": 1260,
+    "renderer_warnings": [],
+    "signals_or_checkpoints_loaded": false
+  },
+  "browser_checks": [
+    "M2/tune defaults",
+    "model, subject and run filtering",
+    "10-window pagination to page 2 with 6 of 16 windows",
+    "SVG download",
+    "no captured error/warning logs"
+  ],
+  "review_fixes": [
+    "saved confidence interval and bootstrap parameters checked against predictions",
+    "invalid first fit cannot establish legacy provenance",
+    "stable truth/fold/run/provenance across reporting seeds",
+    "invalid fit and root OOF updates committed transactionally",
+    "ROC ties drawn consistently with rank AUC and missing window paths broken"
+  ],
+  "tensorboard": {
+    "optional": true,
+    "mock_writer_tests": "passed",
+    "real_event_file_test": "pending: torch and tensorboard unavailable"
+  },
+  "scientific_protocol": "models, fixed seeds, splits and training budgets unchanged",
+  "formal_training_executed": false,
+  "audit_note": "Architect identified three P2 findings; worker/root fixed them. Final regression review completed by root after worker/architect usage limits."
+}

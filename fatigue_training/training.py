@@ -139,11 +139,13 @@ def reusable(path, binding):
     return read_json(path/"result.json")
 
 
-def fit(cfg, task, dataset, output, device="cpu", mode="interface", acceptance=None, cache=None, binding=None):
+def fit(cfg, task, dataset, output, device="cpu", mode="interface", acceptance=None, cache=None, binding=None, logging_options=None):
     """Inner fits see validation only. Refit fits see outer test only after fixed-length training."""
     # task 描述这次训练：模型、seed、外/内层编号、超参数和被试名单。
     # tune/supplement：用验证集选最佳 epoch；refit：按固定 epoch 数重训。
     # stats、model、optimizer 都属于当前 fit，不从别的内层训练继承。
+    from .monitoring import check_logging, EpochLogger
+    check_logging(logging_options)
     import torch
     from .models import FatigueModel
     output = Path(output)
@@ -157,6 +159,7 @@ def fit(cfg, task, dataset, output, device="cpu", mode="interface", acceptance=N
     fingerprint = digest(binding)
     attempt_began = time.perf_counter()
     write_json(output/"status.json", dict(state="running", fingerprint=fingerprint, binding=binding))
+    tb = None
     try:
         # 第1步：区分训练、验证和外层测试被试，检查名单是否有交叉。
         train = list(map(str, task["train"]))
@@ -173,6 +176,10 @@ def fit(cfg, task, dataset, output, device="cpu", mode="interface", acceptance=N
         # 标准化只拟合训练人；验证/测试仅应用这些统计量，避免数据泄漏。
         write_json(output/"normalization.json", stats)
         write_json(output/"configuration.json", dict(config=cfg, task=task, binding=binding))
+        if (logging_options or {}).get("tensorboard"):
+            tb = EpochLogger(output)
+        write_json(output/"monitoring.json", dict(enabled=tb is not None,
+                   tensorboard_directory=str(tb.directory) if tb is not None else None, scientific_config_unchanged=True))
         reset_randomness(task["seed"])
         # 第2步：新建模型和优化器。model.parameters() 是需要学习的权重集合。
         model = FatigueModel(cfg, task["model"]).to(device)
@@ -248,6 +255,8 @@ def fit(cfg, task, dataset, output, device="cpu", mode="interface", acceptance=N
                     record["peak_cuda_memory_bytes"] = int(torch.cuda.max_memory_allocated(device))
                 log.write(json.dumps(record, allow_nan=False)+"\n")
                 log.flush()
+                if tb is not None:
+                    tb.write(record, task["lr"], is_refit)
                 if not is_refit and stale >= t["early_stopping_patience"]:
                     # 默认连续15轮未明显改善则早停，最后预测会使用最佳轮权重。
                     break
@@ -262,6 +271,9 @@ def fit(cfg, task, dataset, output, device="cpu", mode="interface", acceptance=N
         # 内层输出验证预测；重训结束后才输出外层测试预测。
         dataset.check_unchanged()
         write_predictions(output/"predictions.csv", rows)
+        if tb is not None:
+            tb.close()
+            tb = None
         result = dict(best_epoch=best_epoch, primary=evaluate(rows)["primary"], evaluation=evaluate(rows),
                       stratified=stratified(rows), nonoverlap=optional_evaluate([r for r in rows if r["window_in_run"] % 2 == 0]),
                       completed_epochs=epoch, seconds=time.perf_counter()-began, fingerprint=fingerprint,
@@ -275,8 +287,14 @@ def fit(cfg, task, dataset, output, device="cpu", mode="interface", acceptance=N
                     artifacts={name: file_hash(output/name) for name in names}))
         return result
     except BaseException as error:
+        monitoring_error = None
+        if tb is not None:
+            try:
+                tb.close()
+            except Exception as closing_error:
+                monitoring_error = str(closing_error)
         # 包括手动中断在内的失败会写入 status；再次执行从第1轮重新训练。
         write_json(output/"status.json", dict(state="failed", fingerprint=fingerprint, binding=binding,
                     error=repr(error), traceback=traceback.format_exc(), seconds=time.perf_counter()-attempt_began,
-                    resume="restart_fit_from_epoch_1"))
+                    resume="restart_fit_from_epoch_1", monitoring_error=monitoring_error))
         raise
