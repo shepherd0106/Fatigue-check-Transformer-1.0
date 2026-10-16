@@ -1,0 +1,30 @@
+{
+  "source_hash": "857a9f7b83b4e546be4b73a1e1a0c02370178b1957a4f098674cb9925b50d4fb",
+  "files": {
+    "__init__.py": "f57244d03a85fa9ab75d527221999fd4f7b1c1980b4675f056664ba41315c0e0",
+    "__main__.py": "b3bdef8144bb57cd5fb17d0410ecde921c0abbe222f4b7c1ec9bd42f3bd40562",
+    "common.py": "d4c09e7a20014ab854ca227a5aea3c9b983934bace45a3414661fda37fca06d1",
+    "configs/protocol.json": "85a99a85633a236c8b37a46806d497caf0535b2a52899140c048d5627d2e4713",
+    "data.py": "8eacc38c2fbcdad5187104b59b16bf2f3dc115ea42ee872769effef0eb05ba34",
+    "development.py": "828bfcf538e8a9aa0afeaf206816fae9a6f58f6ccb5b068dc786ff22c97c3136",
+    "development_features.py": "17bdabf553a10fbc261f170060ef494264ae5a743297857c513ddcc151cdad3d",
+    "development_models.py": "03c971d7e53d168483e224bfe472cba3e69eb8701f2e53dad66da710647945ea",
+    "development_preflight.py": "2193415e254a6e85c90fce65ef69ca54ffa288a4474a666adb0dd5349a0a7bde",
+    "development_reporting.py": "60ef8e2d13cb9b905f40569b4e309e065c059d13f3e607b204a4528f36b2cc68",
+    "development_training.py": "8ff4e71025a3fadc390e49a48378b12defaf000d32e6cee583f0e3d740221e72",
+    "experiment.py": "8ddf80c089dc0c31e853b41ad4754501d93e13ea8d01e83b3c55d680483905d9",
+    "metrics.py": "7a999f12e65535049ebfa3fcb90e6dd9eb87f0f5378285d8c4a29e4b880279f6",
+    "models.py": "65328dcf0731211cfa53de9184f613f048eead6a4fae6528677112bb97a99d5f",
+    "monitoring.py": "1adbe9f3ea2ff0c9846c2a976af4e0bd38a9f839ad57a652a1a87463fb4d2ea3",
+    "normalization.py": "c1eca4d9dc52b603e0b5bc5ff9221980fcd5df24f0a62867aaa3462fa6a6dc51",
+    "protocol.py": "7f55f100d6f4e07734a0fca88b8d2f052f159e81af0aa3352b8452185a96459a",
+    "reporting.py": "c6cea9624bba519bb89492c74134ec9dc9114a151148d499877dbec24f44ae8c",
+    "smoke.py": "a417b6ba6591dcfa57ed6181338ee1e38e1b2a1a4251c9b8efe1b1d8afd56abf",
+    "spec.py": "663efbed169bdf1add433cd0321b73ffcaa926b609ba52f8f5e646ffedff6767",
+    "synthetic.py": "7df5d63ac161256a2926d05a30a08873f08d4b6cb19eec71149a7334d44650dc",
+    "time_axis.py": "8a12ff7f5f2a493b3b3c22b3c713a5398828e38e580846c1876fc0aad8da2357",
+    "training.py": "7c88d845807f5f8ed59736e70c027414ca3fce9e9d25bd429a7f5f77f36b4db6",
+    "visualization.py": "bd3f09dd8a54cf1f62cb469e7b5d9a991237df768439c5b5b0179ef10f4fdf6d",
+    "visualization_demo.py": "34780e056bb63e0238209fd84275cce97b40f97d89f615a4683a9618fc072d0a"
+  }
+}

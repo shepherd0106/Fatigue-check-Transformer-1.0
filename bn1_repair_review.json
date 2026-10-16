@@ -1,0 +1,23 @@
+{
+  "approved_by": "主agent（依据用户已授权的代码实现与故障修复范围）",
+  "approved_at": "2026-10-15T00:05:37.628842+08:00",
+  "reason": "统一固定训练态理论冗余的BN1 beta；实际近零AdamW矩与可见更新支持修复，保留原E0预算及证据，七模型全重检。",
+  "review_type": "implementation_repair_not_formal_scientific_approval",
+  "old_code_hash": "fb01431dbea3e99dd55b87f23d924d0754d0854aa3d52fac294828edce24c900",
+  "new_code_hash": "857a9f7b83b4e546be4b73a1e1a0c02370178b1957a4f098674cb9925b50d4fb",
+  "old_config_hash": "aadce7b8acceaed295f01ec87c9368ce69c04373673cfc9f8b0972adb45493f7",
+  "new_config_hash": "695d88783d0899de3004d7b9dceb5e8e65f966a41bf7ad144bf37ddc487fe230",
+  "slots": [
+    "E0_C_EF",
+    "E0_M0_EF"
+  ],
+  "reviewed_unaffected_e0_models": [],
+  "payload_manifest_sha256": "dc4f4f46041eea1c4a1fb72c45df7a4e1633dc6d26a1ef388bfe744082cdbadc",
+  "GPU_repair_verified": false,
+  "research_fits_started": false,
+  "tolerance_unchanged": {
+    "rtol": 0.0001,
+    "atol": 1e-05
+  },
+  "architect_calls": 0
+}

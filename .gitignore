@@ -5,3 +5,23 @@ build/
 dist/
 runs/
 tests/.tmp/
+
+# Local environments, datasets, checkpoints and generated experiment artifacts.
+.venv/
+.env
+.env.*
+!.env.example
+*.pt
+*.pth
+*.ckpt
+*.npy
+*.npz
+*.mat
+*.xdf
+*.pkl
+*.mp4
+*.zip
+*.log
+.pytest_cache/
+/regression_work_20261016/
+/local/

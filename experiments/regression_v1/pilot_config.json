@@ -1,0 +1,124 @@
+{
+  "experiment_name": "regression_pilot_C_E",
+  "description": "回归训练pilot实验：用连续F训练EEG-only模型，测试时转换为二分类和三分类",
+
+  "model": {
+    "variant": "C_E_regression",
+    "architecture": "EEG-only CNN",
+    "trainable_params": 1801,
+    "output": "continuous F (0-1)",
+    "encoder": "与C_EF共享初始化，仅保留EEG分支"
+  },
+
+  "training": {
+    "fold": 2,
+    "seed": 17,
+    "max_steps": 2304,
+    "batch_size": 64,
+    "learning_rate": 0.001,
+    "optimizer": "AdamW",
+    "weight_decay": 0.001,
+    "grad_clip_norm": 1.0,
+    "dropout": 0.3,
+    "loss_function": "MSELoss",
+    "early_stopping": {
+      "enabled": true,
+      "patience": 10,
+      "min_delta": 1e-4,
+      "metric": "val_mae"
+    }
+  },
+
+  "data": {
+    "source": "fatigue_time_axis_v2_preview",
+    "windows_csv": "时间轴v2预览/fatigue_time_axis_v2_preview/windows.csv",
+    "window_length_sec": 10,
+    "stride_sec": 5,
+    "total_windows": 15543,
+    "train_subjects": [1, 3, 4, 6, 7, 8, 10, 11, 15, 17, 19, 22, 23, 24, 25, 28, 30, 31],
+    "val_subjects": [5, 14, 21, 26, 27, 32],
+    "train_windows": 11687,
+    "val_windows": 3856,
+    "label_field": "label_mean_f",
+    "label_type": "continuous",
+    "label_range": [0, 1]
+  },
+
+  "evaluation": {
+    "regression_metrics": [
+      "MAE",
+      "RMSE",
+      "Pearson correlation",
+      "Spearman correlation"
+    ],
+    "binary_classification": {
+      "threshold": 0.4,
+      "metrics": ["accuracy", "recall_0", "recall_1"]
+    },
+    "ternary_classification": {
+      "thresholds": [0.3, 0.6],
+      "metrics": ["accuracy", "recall_0", "recall_1", "recall_2"]
+    }
+  },
+
+  "baseline_comparison": {
+    "model": "C_E 分类版本",
+    "fold": 2,
+    "seed": 17,
+    "main_metric": 0.4970,
+    "binary_accuracy": 0.4970,
+    "class0_recall": 0.5633,
+    "class1_recall": 0.4418,
+    "source": "单模态诊断报告"
+  },
+
+  "success_criteria": {
+    "minimum": {
+      "mae": "< 0.20",
+      "binary_accuracy": "> 0.50",
+      "interpretation": "证明回归任务可行"
+    },
+    "target": {
+      "mae": "< 0.15",
+      "binary_accuracy": "> 0.55",
+      "pearson_r": "> 0.70",
+      "interpretation": "证明回归优于直接分类"
+    },
+    "excellent": {
+      "mae": "< 0.12",
+      "binary_accuracy": "> 0.60",
+      "ternary_accuracy": "> 0.50",
+      "interpretation": "显著改善，值得全面推广"
+    }
+  },
+
+  "next_steps": {
+    "if_success": [
+      "全面训练：四折 × 三模型(C_E/C_F/C_EF) × seed17",
+      "加入seed29/43进行稳定性验证",
+      "测试融合模块（Q/A）在回归任务下的效果",
+      "PVT验证分析：预测F值与PVT失误率的相关性"
+    ],
+    "if_failure": [
+      "检查预测分布（是否过于保守或激进）",
+      "尝试Huber Loss（对异常值更鲁棒）",
+      "尝试加权MSE（对高F值区域加权）",
+      "如果仍失败，退回方案A（保守优化分类模型）"
+    ]
+  },
+
+  "timeline": {
+    "preparation": "今天下午（已完成）",
+    "training": "今晚或明早（1-2小时GPU）",
+    "analysis": "明天下午",
+    "decision": "明天晚上"
+  },
+
+  "notes": [
+    "模型编码器与分类版本完全相同，仅输出层和损失不同",
+    "训练统计量（归一化参数）与分类版本共享",
+    "BN1 beta固定为0（与分类版本保持一致）",
+    "阈值可在测试后调整，不影响训练",
+    "连续F来自EWMA平滑的KSS评分，范围0-1"
+  ]
+}

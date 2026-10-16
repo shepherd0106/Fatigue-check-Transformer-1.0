@@ -1,0 +1,10 @@
+{
+  "ledger.json": "7746ebc1fe95f70ad73160e93d192f04095e7f4aa904afa26e22afb2e874176e",
+  "prepared.json": "15a37216c8477c863a9057bdd7450bbb960fa38903f1b31307480ad67b949993",
+  "runs/pilot_C_EF_constant/status.json": "a7f80bf240e00a688b6be4d85b815a2d2e5610afe8bcd544133bffcd4ae1a8c8",
+  "runs/pilot_C_EF_cosine/status.json": "08ca7fab83588d38e2be011e5748a7eadfa2e344b6a28fb4d22b104681f13ae0",
+  "runs/pilot_M0_EF_constant/status.json": "cb4c1b4947026cb3d516d7e38a5aa44d88e04e7e9ea6ba77111aa7eb4b3a16cc",
+  "runs/pilot_M0_EF_cosine/status.json": "e83c4d6f649f8ed32e3d6f1161a8db4564d9caf5ab8925f77849bc02d5d0b1dc",
+  "runs/tiny_C_EF/status.json": "eef309e5e683982a559fd9e9c9d648db702e5ec24cecd1b8a5143cc6bfd61e8c",
+  "runs/tiny_M0_EF/status.json": "9015f4a9d77e25aada07b2b6582fd2a43947e8b3ebd709721984d0d0afec0c9b"
+}

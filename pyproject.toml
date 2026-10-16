@@ -11,6 +11,8 @@ dependencies = ["numpy>=1.26,<3", "torch>=2.6,<3"]
 
 [project.optional-dependencies]
 monitoring = ["tensorboard>=2.17,<3"]
+preprocessing = ["scipy>=1.15,<2", "pyxdf==1.17.5"]
+development = ["scipy>=1.15,<2", "scikit-learn>=1.6,<2", "mamba-ssm==2.2.6.post3"]
 
 [tool.setuptools.packages.find]
 include = ["fatigue_training*"]

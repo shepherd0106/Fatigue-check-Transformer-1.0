@@ -1,0 +1,355 @@
+{
+  "protocol_id": "cnn_mamba_fusion_development_v2",
+  "schema_version": 2,
+  "outer_groups": [
+    [
+      2,
+      9,
+      12,
+      20,
+      29,
+      33
+    ],
+    [
+      5,
+      14,
+      21,
+      26,
+      27,
+      32
+    ],
+    [
+      3,
+      4,
+      7,
+      10,
+      19,
+      31
+    ],
+    [
+      1,
+      8,
+      15,
+      22,
+      24,
+      30
+    ],
+    [
+      6,
+      11,
+      17,
+      23,
+      25,
+      28
+    ]
+  ],
+  "eeg": {
+    "input_channels": 4,
+    "input_samples": 2500,
+    "sample_rate_hz": 250,
+    "conv": {
+      "temporal_filters": 8,
+      "temporal_kernel": 64,
+      "temporal_pad": [
+        31,
+        32
+      ],
+      "spatial_depth_multiplier": 2,
+      "spatial_groups": 8,
+      "separable_kernel": 16,
+      "separable_pad": [
+        7,
+        8
+      ],
+      "separable_output_channels": 16,
+      "projection_dim": 32,
+      "pool_sizes": [
+        5,
+        5
+      ],
+      "stride": 1,
+      "dilation": 1,
+      "bias": false,
+      "padding_mode": "constant_zero",
+      "pool_padding": 0,
+      "pool_ceil_mode": false,
+      "bn_eps": 1e-05,
+      "bn_momentum": 0.1,
+      "bn_affine": true,
+      "bn_track_running_stats": true,
+      "elu_alpha": 1.0,
+      "dropout": 0.3
+    },
+    "tokens": 100
+  },
+  "fnirs": {
+    "input_channels": 24,
+    "input_samples": 250,
+    "sample_rate_hz": 25,
+    "conv": {
+      "temporal_filters": 8,
+      "temporal_kernel": 25,
+      "temporal_pad": [
+        12,
+        12
+      ],
+      "spatial_depth_multiplier": 2,
+      "spatial_groups": 8,
+      "separable_kernel": 5,
+      "separable_pad": [
+        2,
+        2
+      ],
+      "separable_output_channels": 16,
+      "projection_dim": 32,
+      "pool_sizes": [
+        5,
+        1
+      ],
+      "stride": 1,
+      "dilation": 1,
+      "bias": false,
+      "padding_mode": "constant_zero",
+      "pool_padding": 0,
+      "pool_ceil_mode": false,
+      "bn_eps": 1e-05,
+      "bn_momentum": 0.1,
+      "bn_affine": true,
+      "bn_track_running_stats": true,
+      "elu_alpha": 1.0,
+      "dropout": 0.3
+    },
+    "tokens": 50
+  },
+  "data": {
+    "manifest_schema": 1,
+    "window_seconds": 10,
+    "stride_seconds": 5,
+    "input_dtype": "float32",
+    "target_dtype": "int64",
+    "eeg_shape": [
+      "B",
+      4,
+      2500
+    ],
+    "fnirs_shape": [
+      "B",
+      24,
+      250
+    ],
+    "label": "label_2class",
+    "paired_valid_only": true,
+    "expected_real_fingerprint": "044fa0e4aac796f03e9219118c2f987bd1713da79637cc7f9cc5974a4344329e",
+    "excluded_outer_subjects": [
+      "12",
+      "2",
+      "20",
+      "29",
+      "33",
+      "9"
+    ],
+    "normalization": "training_only_deduplicated_subject_equal_zero_variance_scale1"
+  },
+  "models": [
+    "C_EF",
+    "M0_EF",
+    "T_EF",
+    "Q_EF",
+    "A_EF",
+    "F_EF",
+    "K_EF"
+  ],
+  "parameter_counts": {
+    "C_EF": 3450,
+    "M0_EF": 43386,
+    "T_EF": 37626,
+    "Q_EF": 51642,
+    "A_EF": 46554,
+    "F_EF": 54810,
+    "K_EF": 54802
+  },
+  "mamba": {
+    "generation": 1,
+    "tag": "v2.2.6.post3",
+    "commit": "10b5d6358f27966f6a40e4bf0baa17a460688128",
+    "d_model": 32,
+    "d_state": 16,
+    "d_conv": 4,
+    "expand": 2,
+    "dt_rank": 2,
+    "bias": false,
+    "conv_bias": true,
+    "dt_min": 0.001,
+    "dt_max": 0.1,
+    "dt_init": "random",
+    "dt_scale": 1,
+    "dt_init_floor": 0.0001,
+    "use_fast_path": false,
+    "inference_params": null,
+    "layers_per_branch": 2,
+    "dropout": 0.3,
+    "prenorm_eps": 1e-05,
+    "persistent_state": false,
+    "conv_backend": "process_frozen_torch_conv_selective_scan_cuda"
+  },
+  "transformer": {
+    "d_model": 32,
+    "nhead": 4,
+    "dim_feedforward": 64,
+    "layers_per_branch": 2,
+    "norm_first": true,
+    "batch_first": true,
+    "activation": "GELU_exact",
+    "dropout": 0.3,
+    "layer_norm_eps": 1e-05,
+    "bias": true,
+    "position_encoding": "fixed_sinusoidal_window_reset"
+  },
+  "readout": {
+    "global_mean": "actual_token_equal_weight",
+    "bins": 4,
+    "partition": "floor(j*N/4), disjoint half-open",
+    "eeg_bounds": [
+      0,
+      25,
+      50,
+      75,
+      100
+    ],
+    "fnirs_bounds": [
+      0,
+      12,
+      25,
+      37,
+      50
+    ],
+    "projection": [
+      128,
+      32
+    ],
+    "projection_zero_weight_and_bias": true,
+    "existing_layernorm_eps": 1e-05,
+    "extra_dropout": false
+  },
+  "conditional_fusion": {
+    "direction": "fNIRS_to_EEG",
+    "layers": [
+      32,
+      32,
+      64
+    ],
+    "activation": "GELU_exact",
+    "scale": 0.1,
+    "gamma_beta": ".1*tanh",
+    "last_weight_bias_zero": true,
+    "extra_norm": false,
+    "extra_dropout": false
+  },
+  "capacity_control": {
+    "layers": [
+      64,
+      88,
+      64
+    ],
+    "activation": "GELU_exact",
+    "last_weight_bias_zero": true,
+    "extra_norm": false,
+    "extra_dropout": false
+  },
+  "head": {
+    "concat_order": [
+      "eeg",
+      "fnirs"
+    ],
+    "dropout": 0.3,
+    "linear": [
+      64,
+      2
+    ],
+    "bias": true,
+    "prediction": "logit_argmax"
+  },
+  "signal_baseline": {
+    "features": 104,
+    "input": "training_people_signal_zscore_then_feature_scaler",
+    "EEG_features": 32,
+    "fNIRS_features": 72,
+    "Welch": {
+      "fs": 250,
+      "nperseg": 500,
+      "nfft": 500,
+      "noverlap": 250,
+      "window": "periodic_hann",
+      "detrend": "constant",
+      "scaling": "density"
+    },
+    "bands": "[1,4),[4,8),[8,13),[13,30]",
+    "fnirs": "mean/std_ddof0/OLS_slope_zscore_per_second",
+    "logistic": {
+      "C": 1,
+      "penalty": "l2",
+      "solver": "lbfgs",
+      "tol": 1e-06,
+      "max_iter": 2000,
+      "fit_intercept": true,
+      "class_weight": null,
+      "sample_weight": "N_train/(S*n_subject)"
+    }
+  },
+  "training": {
+    "batch_size": 64,
+    "updates_per_epoch": 64,
+    "max_epochs": 60,
+    "patience": 10,
+    "improvement": 0.0001,
+    "weight_decay": 0.001,
+    "lr_grid": [
+      0.0003,
+      0.001
+    ],
+    "seeds": [
+      17,
+      29,
+      43
+    ],
+    "optimizer": "AdamW",
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "eps": 1e-08,
+    "clip": 1,
+    "precision": "float32",
+    "amp": false,
+    "tf32": false,
+    "deterministic": true
+  },
+  "segment_bins": 4,
+  "modulation_scale": 0.1,
+  "bootstrap_seed": 20261014,
+  "budget": {
+    "D0": {
+      "slots": 15,
+      "steps": 28,
+      "iterations": 2000
+    },
+    "D1": {
+      "slots": 60,
+      "steps": 215040,
+      "iterations": 8000
+    },
+    "D2": {
+      "slots": 56,
+      "steps": 215040,
+      "iterations": 0
+    },
+    "E0": {
+      "slots": 12,
+      "steps": 64,
+      "iterations": 0
+    }
+  },
+  "scope": "inner_validation",
+  "outer_test_evaluated": false,
+  "formal_protocol_completed": false
+}

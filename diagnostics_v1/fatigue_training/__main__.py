@@ -1,0 +1,229 @@
+"""Default help and task planning do not load arrays or start training."""
+# 命令行入口：在项目根目录运行 python -m fatigue_training <子命令>。
+# 阅读 main 可了解流程如何连接：加载配置 → 根据命令选功能 → 输出结果。
+# plan 只列计划；synthetic 生成测试数据；validate-data 检查接口；
+# smoke-* 做小规模检查；train 才调用 experiment.nested 组织训练。
+import argparse
+import json
+from pathlib import Path
+import sys
+from .common import write_json
+from .protocol import load_config, plan
+
+
+def parser():
+    # argparse 将命令行参数变成 args 对象，例如 --device cpu 对应 args.device。
+    p = argparse.ArgumentParser(description="EEG/fNIRS portable research framework (explicit execution only)")
+    p.add_argument("--config", help="Protocol JSON; fixed model/training fields are validated")
+    sub = p.add_subparsers(dest="command")
+    devplan=sub.add_parser("dev-plan",help="Independent v2 inner development plan; no arrays or torch")
+    devplan.add_argument("--phase",choices=["all","D0","D1","D2"],default="all")
+    devplan.add_argument("--output")
+    preflight=sub.add_parser("dev-preflight",help="Inspect dependencies by default; --execute runs budgeted real CUDA E0")
+    preflight.add_argument("--output",required=True)
+    preflight.add_argument("--device",default="cuda:0")
+    preflight.add_argument("--source-root",help="Clean official Mamba checkout at locked commit; needed with --execute")
+    preflight.add_argument("--execute",action="store_true")
+    preflight.add_argument("--repair",help="Explicit scoped E0 repair/source review JSON")
+    devtrain=sub.add_parser("dev-train",help="Independent v2 explicit D0/D1/D2; no outer prediction")
+    devtrain.add_argument("--manifest",required=True)
+    devtrain.add_argument("--data-root")
+    devtrain.add_argument("--output",required=True)
+    devtrain.add_argument("--phase",required=True,choices=["D0","D1","D2"])
+    devtrain.add_argument("--device",default="cuda:0")
+    devtrain.add_argument("--source-root",required=True)
+    devtrain.add_argument("--preflight",required=True)
+    devtrain.add_argument("--max-new-fits",required=True,type=int)
+    devtrain.add_argument("--mode",required=True,choices=["interface","formal"])
+    devtrain.add_argument("--acceptance")
+    devtrain.add_argument("--quality-review",help="D1 full-report-bound review required for D2")
+    devtrain.add_argument("--repair",help="Scoped changed-source repair and unaffected-slot review JSON")
+    devtrain.add_argument("--execute",action="store_true")
+    devreport=sub.add_parser("dev-report",help="Rebuild offline inner JSON/CSV/HTML from immutable fit evidence")
+    devreport.add_argument("--results",required=True)
+    # 每个子命令拥有自己的参数；全局 --config 应放在子命令之前。
+    planning = sub.add_parser("plan", help="List nested fit budget without reading data")
+    planning.add_argument("--models", nargs="+", choices=["M2", "M1", "F1", "F0", "E1", "F2", "M3"])
+    planning.add_argument("--outer", nargs="+", type=int, choices=range(1,6))
+    planning.add_argument("--output", help="Optional full task plan JSON")
+    synth = sub.add_parser("synthetic", help="Generate small synthetic NPY fixtures")
+    synth.add_argument("--output", required=True)
+    synth.add_argument("--windows-per-subject", type=int, default=3)
+    adapter = sub.add_parser("adapt-legacy", help="Metadata-only legacy manifest/CSV adapter")
+    adapter.add_argument("--manifest", required=True)
+    adapter.add_argument("--window-csv", required=True)
+    adapter.add_argument("--data-root", required=True)
+    adapter.add_argument("--output", required=True)
+    validate = sub.add_parser("validate-data", help="Hash/scan eligible coverage, fit train-only statistics")
+    validate.add_argument("--manifest", required=True)
+    validate.add_argument("--data-root")
+    validate.add_argument("--output", required=True)
+    validate.add_argument("--outer", type=int, default=1, choices=range(1,6))
+    validate.add_argument("--inner", type=int, default=2, choices=range(1,6))
+    sub.add_parser("smoke-models", help="Explicit CPU model forward/backward tests (requires torch)")
+    smoke = sub.add_parser("smoke-fit", help="Explicit CPU two-update synthetic fit (requires torch)")
+    smoke.add_argument("--output", required=True)
+    overfit = sub.add_parser("overfit-synthetic", help="CPU two-window memorization diagnostic")
+    overfit.add_argument("--max-steps", type=int, default=200)
+    visual=sub.add_parser("visualize",help="Generate completely offline HTML from text results only")
+    visual.add_argument("--results",required=True)
+    visual.add_argument("--output",required=True)
+    visual.add_argument("--models",nargs="+",choices=["M2","M1","F1","F0","E1","F2","M3"],help="Optional HTML model subset; full metrics retain all windows in each included model")
+    demo=sub.add_parser("visualize-demo",help="Generate simulated result tables and offline HTML; no signals/torch")
+    demo.add_argument("--output",required=True)
+    demo.add_argument("--windows-per-run",type=int,default=16)
+    export=sub.add_parser("tensorboard-export",help="Convert existing epoch JSONL logs to optional TensorBoard events")
+    export.add_argument("--results",required=True)
+    export.add_argument("--output")
+    train = sub.add_parser("train", help="Explicit nested CV with a new-fit budget")
+    train.add_argument("--manifest", required=True)
+    train.add_argument("--data-root")
+    train.add_argument("--output", required=True)
+    scope = train.add_mutually_exclusive_group(required=True)
+    # 必须在“指定模型子集”和“全部七模型”之间选择一种实验范围。
+    scope.add_argument("--models", nargs="+", choices=["M2", "M1", "F1", "F0", "E1", "F2", "M3"])
+    scope.add_argument("--full-protocol", action="store_true", help="All seven models; 945 fits over all folds")
+    train.add_argument("--outer", nargs="+", type=int, choices=range(1,6), default=list(range(1,6)))
+    train.add_argument("--max-new-fits", required=True, type=int, help="Stop after this many newly executed fits")
+    train.add_argument("--device", default="cpu")
+    train.add_argument("--mode", required=True, choices=["interface", "formal"])
+    train.add_argument("--acceptance", help="Formal real-data acceptance receipt")
+    train.add_argument("--execute", action="store_true", help="Required to start any fits")
+    train.add_argument("--max-epochs", type=int, help="Interface-only explicit debug budget override")
+    train.add_argument("--updates-per-epoch", type=int, help="Interface-only explicit debug budget override")
+    train.add_argument("--batch-size", type=int, help="Interface-only explicit debug budget override")
+    train.add_argument("--tensorboard",action="store_true",help="Optional non-scientific live epoch logging; requires monitoring extra")
+    return p
+
+
+def main(argv=None):
+    # main 返回退出码：0代表命令成功结束；不一定代表全部实验已经完成。
+    # 例如 train 达到本次 fit 预算时，结果中的 state 会标记 budget_reached。
+    p = parser()
+    args = p.parse_args(argv)
+    if args.command is None:
+        # 没有子命令时只显示帮助，方便先了解用法。
+        p.print_help()
+        return 0
+    # Route new protocol BEFORE old fixed-schema loading. Never feed design JSON
+    # or development IDs into the v1 seven-model nested scheduler.
+    if args.command.startswith("dev-"):
+        if args.config:p.error("dev commands use frozen v2 specification; --config is only for legacy v1")
+        if args.command=="dev-plan":
+            from .development import plan as dev_plan
+            result=dev_plan(args.phase)
+            if args.output:write_json(args.output,result)
+            print(json.dumps({k:v for k,v in result.items() if k!="tasks"},ensure_ascii=False,indent=2))
+            return 0
+        if args.command=="dev-preflight":
+            if args.execute and not args.source_root:p.error("--execute preflight requires --source-root")
+            from .development_preflight import execute_preflight
+            result=execute_preflight(args.output,args.device,args.source_root,args.execute,args.repair)
+            if not args.execute:write_json(Path(args.output)/"inspection.json",result)
+        elif args.command=="dev-train":
+            if not args.execute:p.error("dev-train requires --execute; use dev-plan first")
+            from .development_training import execute_phase
+            result=execute_phase(args.manifest,args.output,args.phase,args.device,args.source_root,
+                args.preflight,args.max_new_fits,args.execute,args.data_root,args.mode,args.acceptance,args.quality_review,args.repair)
+        else:
+            from .development import Ledger
+            from .development_training import report
+            from .common import read_json
+            from .development_preflight import ExclusiveRun
+            path=Path(args.results)/"ledger.json"
+            with ExclusiveRun(Path(args.results)/"writer.lock"):
+                saved=read_json(path);ledger=Ledger(path,saved["binding"])
+                result=report(args.results,ledger)
+        print(json.dumps(result,ensure_ascii=False,indent=2,allow_nan=False))
+        return 0
+    cfg = load_config(args.config)
+    if args.command == "plan":
+        # 不读信号数组，查看模型/折范围需要多少次 fit 和最多多少次参数更新。
+        result = plan(cfg, args.models, args.outer)
+        if args.output:
+            write_json(args.output, result)
+        print(json.dumps({k:v for k,v in result.items() if k != "tasks"}, indent=2))
+        return 0
+    if args.command == "visualize":
+        from .visualization import render
+        result=render(args.results,args.output,args.models)
+    elif args.command == "visualize-demo":
+        from .visualization_demo import generate_demo
+        result=generate_demo(args.output,args.windows_per_run)
+    elif args.command == "tensorboard-export":
+        from .monitoring import export_logs
+        result=export_logs(args.results,args.output)
+    elif args.command == "synthetic":
+        # 按需导入模块，使只看帮助/计划时不用导入 PyTorch。
+        from .synthetic import generate
+        result = dict(manifest=str(generate(args.output, args.windows_per_subject)), kind="synthetic")
+    elif args.command == "adapt-legacy":
+        from .data import adapt_legacy
+        result = dict(manifest=str(adapt_legacy(args.manifest, args.window_csv, args.output, args.data_root)),
+                      acceptance="unverified_no_arrays_read")
+    elif args.command == "validate-data":
+        # 先检查30人分组，拟合训练人标准化，再扫描两模态有效窗口。
+        # 扫描验证/测试数组只检查形状、覆盖和有限值，不用它们拟合统计量。
+        from .data import WindowDataset
+        from .normalization import fit_normalization
+        from .protocol import splits
+        data = WindowDataset(args.manifest, args.data_root)
+        data.check_cohort(cfg)
+        train, val, test = splits(cfg, args.outer, args.inner)
+        stats = fit_normalization(data, train, val+test)
+        # Scan each eligible window on both modalities to check held-out interface too,
+        # without fitting any held-out statistics or interpreting acquisition validity.
+        for i in data.indices([w.subject_id for w in data.windows]):
+            for modality in ("eeg", "fnirs"):
+                data.slice(data.windows[i], modality)
+        data.check_unchanged()
+        write_json(args.output, dict(data_fingerprint=data.fingerprint(), data_kind=data.manifest["kind"],
+             normalization=stats, status="interface_passed", physical_synchronization="not_established_by_this_check"))
+        result = dict(status="interface_passed", output=args.output)
+    elif args.command in ("smoke-models", "smoke-fit", "overfit-synthetic"):
+        # smoke 是快速基础检查；合成过拟合只检查记忆能力，不代表疲劳识别效果。
+        from .smoke import model_checks, synthetic_fit, overfit_synthetic
+        if args.command == "smoke-models":
+            result = model_checks()
+        elif args.command == "smoke-fit":
+            result = synthetic_fit(args.output)
+        else:
+            result = overfit_synthetic(args.max_steps)
+    else:
+        # train 分支：显式执行标志、正式验收凭据和预算参数都在调度之前检查。
+        if not args.execute:
+            p.error("train requires --execute; use plan to inspect the budget first")
+        if args.mode == "formal" and not args.acceptance:
+            p.error("formal real-data training requires --acceptance")
+        from .protocol import validate_config
+        for field in ["max_epochs", "updates_per_epoch", "batch_size"]:
+            # 短预算仅用于 interface 调试；formal 必须遵守原实验预算。
+            override = getattr(args, field)
+            if override is not None:
+                if args.mode == "formal":
+                    p.error("Budget overrides are interface-only; revise the formal protocol explicitly")
+                cfg["training"][field] = override
+        validate_config(cfg)
+        from .monitoring import check_logging
+        logging_options=dict(tensorboard=args.tensorboard)
+        check_logging(logging_options)
+        from .data import WindowDataset
+        from .experiment import nested
+        data = WindowDataset(args.manifest, args.data_root)
+        result = nested(cfg, data, args.output, list(cfg["variants"]) if args.full_protocol else args.models,
+                        args.outer, args.max_new_fits, args.device, args.mode, args.acceptance,
+                        logging_options=logging_options)
+    print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+    return 0
+
+
+if __name__ == "__main__":
+    # python -m 启动后执行这里；将常见错误显示为清晰提示并返回非零退出码。
+    try:
+        raise SystemExit(main())
+    except ImportError as error:
+        print(f"Dependency unavailable: {error}. Install requirements in the intended server environment.", file=sys.stderr)
+        raise SystemExit(2)
+    except (ValueError, FileNotFoundError, FileExistsError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        raise SystemExit(2)

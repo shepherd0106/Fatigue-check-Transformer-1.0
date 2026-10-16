@@ -1,0 +1,21 @@
+{
+  "created_at": "2026-10-16T10:53:22.535219+08:00",
+  "protocol": "eeg_fit576_dropout_v1",
+  "budget": {
+    "runs": 2,
+    "steps_per_arm": 2304,
+    "optimizer_steps_total": 4608,
+    "retry": false
+  },
+  "selection_sha256": "347e4082a314646d76711688d8151a2a64cd8e420b21a3a3be1cf43d4d31e30c",
+  "sampler_npy_sha256": "504ba9ea56220fc5f986b9bf924c9af0ab0dce37cd666797a9dd3a313334eba7",
+  "files": {
+    "eeg_fit576.py": "1fb63f9eccaaba720eeb8e0f6597236d1716ccdf5242db378dbd5b18e349009b",
+    "check_fit.py": "f684872c4cf225eacb9f2d065b40836e86e9cb903c9412300aefe6659c68dea5",
+    "run.sh": "f1b94cda7ac9c202e52b84d0d6552ee1ca9d1b1ffd145e74a88d265d3e6004f4",
+    "README.md": "bd1c996a031fc6779de5911caf9d02b6d880895ebba3bf004f251a67379ecb91",
+    "test_eeg_fit576.py": "06d6eeb0c64a545ddf0e163cc11f7540cbac594b6b38e89cc7d3a8ceafec786f",
+    "selection.json": "ae186aa44ad1fecd2c325f7f39206f282b7fab52523c59e6a563db49fc389ab7"
+  },
+  "revised_at": "2026-10-16T10:55:51.671907+08:00"
+}

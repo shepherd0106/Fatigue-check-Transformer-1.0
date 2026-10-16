@@ -1,0 +1,2 @@
+# Frozen source and delivery manifests are byte-hashed; preserve exact line endings.
+* -text

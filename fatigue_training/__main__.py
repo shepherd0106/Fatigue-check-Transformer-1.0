@@ -16,6 +16,31 @@ def parser():
     p = argparse.ArgumentParser(description="EEG/fNIRS portable research framework (explicit execution only)")
     p.add_argument("--config", help="Protocol JSON; fixed model/training fields are validated")
     sub = p.add_subparsers(dest="command")
+    devplan=sub.add_parser("dev-plan",help="Independent v2 inner development plan; no arrays or torch")
+    devplan.add_argument("--phase",choices=["all","D0","D1","D2"],default="all")
+    devplan.add_argument("--output")
+    preflight=sub.add_parser("dev-preflight",help="Inspect dependencies by default; --execute runs budgeted real CUDA E0")
+    preflight.add_argument("--output",required=True)
+    preflight.add_argument("--device",default="cuda:0")
+    preflight.add_argument("--source-root",help="Clean official Mamba checkout at locked commit; needed with --execute")
+    preflight.add_argument("--execute",action="store_true")
+    preflight.add_argument("--repair",help="Explicit scoped E0 repair/source review JSON")
+    devtrain=sub.add_parser("dev-train",help="Independent v2 explicit D0/D1/D2; no outer prediction")
+    devtrain.add_argument("--manifest",required=True)
+    devtrain.add_argument("--data-root")
+    devtrain.add_argument("--output",required=True)
+    devtrain.add_argument("--phase",required=True,choices=["D0","D1","D2"])
+    devtrain.add_argument("--device",default="cuda:0")
+    devtrain.add_argument("--source-root",required=True)
+    devtrain.add_argument("--preflight",required=True)
+    devtrain.add_argument("--max-new-fits",required=True,type=int)
+    devtrain.add_argument("--mode",required=True,choices=["interface","formal"])
+    devtrain.add_argument("--acceptance")
+    devtrain.add_argument("--quality-review",help="D1 full-report-bound review required for D2")
+    devtrain.add_argument("--repair",help="Scoped changed-source repair and unaffected-slot review JSON")
+    devtrain.add_argument("--execute",action="store_true")
+    devreport=sub.add_parser("dev-report",help="Rebuild offline inner JSON/CSV/HTML from immutable fit evidence")
+    devreport.add_argument("--results",required=True)
     # 每个子命令拥有自己的参数；全局 --config 应放在子命令之前。
     planning = sub.add_parser("plan", help="List nested fit budget without reading data")
     planning.add_argument("--models", nargs="+", choices=["M2", "M1", "F1", "F0", "E1", "F2", "M3"])
@@ -79,6 +104,37 @@ def main(argv=None):
     if args.command is None:
         # 没有子命令时只显示帮助，方便先了解用法。
         p.print_help()
+        return 0
+    # Route new protocol BEFORE old fixed-schema loading. Never feed design JSON
+    # or development IDs into the v1 seven-model nested scheduler.
+    if args.command.startswith("dev-"):
+        if args.config:p.error("dev commands use frozen v2 specification; --config is only for legacy v1")
+        if args.command=="dev-plan":
+            from .development import plan as dev_plan
+            result=dev_plan(args.phase)
+            if args.output:write_json(args.output,result)
+            print(json.dumps({k:v for k,v in result.items() if k!="tasks"},ensure_ascii=False,indent=2))
+            return 0
+        if args.command=="dev-preflight":
+            if args.execute and not args.source_root:p.error("--execute preflight requires --source-root")
+            from .development_preflight import execute_preflight
+            result=execute_preflight(args.output,args.device,args.source_root,args.execute,args.repair)
+            if not args.execute:write_json(Path(args.output)/"inspection.json",result)
+        elif args.command=="dev-train":
+            if not args.execute:p.error("dev-train requires --execute; use dev-plan first")
+            from .development_training import execute_phase
+            result=execute_phase(args.manifest,args.output,args.phase,args.device,args.source_root,
+                args.preflight,args.max_new_fits,args.execute,args.data_root,args.mode,args.acceptance,args.quality_review,args.repair)
+        else:
+            from .development import Ledger
+            from .development_training import report
+            from .common import read_json
+            from .development_preflight import ExclusiveRun
+            path=Path(args.results)/"ledger.json"
+            with ExclusiveRun(Path(args.results)/"writer.lock"):
+                saved=read_json(path);ledger=Ledger(path,saved["binding"])
+                result=report(args.results,ledger)
+        print(json.dumps(result,ensure_ascii=False,indent=2,allow_nan=False))
         return 0
     cfg = load_config(args.config)
     if args.command == "plan":
